@@ -3,74 +3,63 @@ import { promisify } from 'util'
 
 const execAsync = promisify(exec)
 
-interface WindowLayout {
-  app: string
-  position: 'left' | 'right' | 'fullscreen'
+export type Position = 'left' | 'right' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'fullscreen'
+
+export async function openApp(name: string): Promise<void> {
+  await execAsync(`open -a "${name}"`)
+  await new Promise(r => setTimeout(r, 1000))
 }
 
-/**
- * Arrange windows for meeting preparation
- */
-export async function arrangeWindowsForMeeting(layouts: WindowLayout[]): Promise<void> {
-  // Get screen dimensions
-  const screenInfo = await getScreenDimensions()
-
-  for (const layout of layouts) {
-    await positionWindow(layout.app, layout.position, screenInfo)
-  }
+export async function openUrl(url: string): Promise<void> {
+  await execAsync(`open "${url}"`)
 }
 
-/**
- * Get screen dimensions
- */
+export async function openFile(path: string): Promise<void> {
+  await execAsync(`open "${path}"`)
+}
+
 async function getScreenDimensions(): Promise<{ width: number; height: number }> {
-  const script = `
-    tell application "Finder"
-      set screenBounds to bounds of window of desktop
-      return (item 3 of screenBounds) & "," & (item 4 of screenBounds)
-    end tell
-  `
-
   try {
-    const { stdout } = await execAsync(`osascript -e '${script}'`)
-    const [width, height] = stdout.trim().split(',').map(Number)
-    return { width: width || 1920, height: height || 1080 }
+    const { stdout } = await execAsync(`system_profiler SPDisplaysDataType | grep -E "Resolution:" | head -1`)
+    const match = stdout.match(/(\d+) x (\d+)/)
+    return {
+      width: parseInt(match?.[1] || '1920'),
+      height: parseInt(match?.[2] || '1080')
+    }
   } catch {
     return { width: 1920, height: 1080 }
   }
 }
 
-/**
- * Position a window
- */
-async function positionWindow(
-  appName: string,
-  position: 'left' | 'right' | 'fullscreen',
-  screen: { width: number; height: number }
-): Promise<void> {
-  let x = 0
-  let y = 0
-  let width = screen.width
-  let height = screen.height
+export async function positionWindow(app: string, position: Position): Promise<void> {
+  const { width: w, height: h } = await getScreenDimensions()
+  const menuBar = 25
+  const dock = 70
+  const usable = h - menuBar - dock
 
-  if (position === 'left') {
-    width = Math.floor(screen.width / 2)
-  } else if (position === 'right') {
-    x = Math.floor(screen.width / 2)
-    width = Math.floor(screen.width / 2)
+  const positions: Record<Position, [number, number, number, number]> = {
+    'left': [0, menuBar, w / 2, usable],
+    'right': [w / 2, menuBar, w / 2, usable],
+    'top-left': [0, menuBar, w / 2, usable / 2],
+    'top-right': [w / 2, menuBar, w / 2, usable / 2],
+    'bottom-left': [0, menuBar + usable / 2, w / 2, usable / 2],
+    'bottom-right': [w / 2, menuBar + usable / 2, w / 2, usable / 2],
+    'fullscreen': [0, menuBar, w, usable],
   }
 
+  const [x, y, width, height] = positions[position]
+
   const script = `
-    tell application "${appName}"
+    tell application "${app}"
       activate
     end tell
-    delay 0.2
+    delay 0.3
     tell application "System Events"
-      tell process "${appName}"
+      tell process "${app}"
         try
           set frontWindow to window 1
-          set position of frontWindow to {${x}, ${y}}
-          set size of frontWindow to {${width}, ${height}}
+          set position of frontWindow to {${Math.round(x)}, ${Math.round(y)}}
+          set size of frontWindow to {${Math.round(width)}, ${Math.round(height)}}
         end try
       end tell
     end tell
@@ -79,48 +68,39 @@ async function positionWindow(
   try {
     await execAsync(`osascript -e '${script.replace(/'/g, "'\"'\"'")}'`)
   } catch (error) {
-    console.error(`Failed to position ${appName}:`, error)
+    console.error(`[Window Manager] Failed to position ${app}:`, error)
   }
 }
 
-/**
- * Focus an application
- */
-export async function focusApp(appName: string): Promise<void> {
-  const script = `
-    tell application "${appName}"
-      activate
-    end tell
-  `
+export interface WorkspaceLayout {
+  app: string
+  position: Position
+  url?: string
+  file?: string
+}
 
+export async function setupWorkspace(layouts: WorkspaceLayout[]): Promise<void> {
+  console.log('[Window Manager] Setting up workspace with', layouts.length, 'apps')
+
+  for (const layout of layouts) {
+    try {
+      await openApp(layout.app)
+      if (layout.url) await openUrl(layout.url)
+      if (layout.file) await openFile(layout.file)
+      await positionWindow(layout.app, layout.position)
+    } catch (error) {
+      console.error(`[Window Manager] Failed to setup ${layout.app}:`, error)
+    }
+  }
+
+  console.log('[Window Manager] Workspace setup complete')
+}
+
+export async function focusApp(appName: string): Promise<void> {
+  const script = `tell application "${appName}" to activate`
   try {
     await execAsync(`osascript -e '${script}'`)
   } catch (error) {
-    console.error(`Failed to focus ${appName}:`, error)
+    console.error(`[Window Manager] Failed to focus ${appName}:`, error)
   }
-}
-
-/**
- * Open a URL in the default browser
- */
-export async function openUrl(url: string): Promise<void> {
-  await execAsync(`open "${url}"`)
-}
-
-/**
- * Create a split-screen layout with two apps
- */
-export async function createSplitScreen(leftApp: string, rightApp: string): Promise<void> {
-  await arrangeWindowsForMeeting([
-    { app: leftApp, position: 'left' },
-    { app: rightApp, position: 'right' },
-  ])
-}
-
-/**
- * Reset windows to their normal state
- */
-export async function resetWindows(): Promise<void> {
-  // This is a no-op for now - users can manually resize windows
-  console.log('Window reset requested')
 }

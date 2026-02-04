@@ -17,13 +17,34 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('auth-error', (_, error) => callback(error))
   },
 
+  // Profile (routed through main process for auth)
+  getProfile: (userId: string) => ipcRenderer.invoke('profile:get', userId),
+  updateProfile: (userId: string, updates: Record<string, any>) =>
+    ipcRenderer.invoke('profile:update', userId, updates),
+
+  // Feed (routed through main process for auth)
+  getFeed: () => ipcRenderer.invoke('feed:get'),
+  dismissFeedItem: (itemId: string) => ipcRenderer.invoke('feed:dismiss', itemId),
+
   // Sync
-  syncAll: () => ipcRenderer.send('sync-all'),
+  syncAll: () => ipcRenderer.invoke('sync:all'),
+  syncGoogleCalendar: () => ipcRenderer.invoke('sync:google-calendar'),
+  syncGmail: () => ipcRenderer.invoke('sync:gmail'),
+  syncAppleCalendar: () => ipcRenderer.invoke('sync:apple-calendar'),
 
   // Native features
   runAppleScript: (script: string) => ipcRenderer.invoke('run-applescript', script),
   findDocuments: (query: string) => ipcRenderer.invoke('find-documents', query),
   setupWorkspace: (config: any) => ipcRenderer.invoke('setup-workspace', config),
+
+  // Edge functions
+  invokeFunction: (functionName: string, body: Record<string, unknown>) =>
+    ipcRenderer.invoke('functions:invoke', functionName, body),
+
+  // Events
+  getUpcomingEvents: () => ipcRenderer.invoke('events:upcoming'),
+  updateEvent: (eventId: string, updates: Record<string, unknown>) =>
+    ipcRenderer.invoke('events:update', eventId, updates),
 })
 
 // Type declaration for renderer
@@ -42,13 +63,31 @@ declare global {
       onAuthSuccess: (callback: (data: { user: any; email: string }) => void) => void
       onAuthError: (callback: (error: string) => void) => void
 
+      // Profile
+      getProfile: (userId: string) => Promise<{ data?: any; error?: string }>
+      updateProfile: (userId: string, updates: Record<string, any>) => Promise<{ success?: boolean; error?: string }>
+
+      // Feed
+      getFeed: () => Promise<{ data: any[]; error?: string }>
+      dismissFeedItem: (itemId: string) => Promise<{ success?: boolean; error?: string }>
+
       // Sync
-      syncAll: () => void
+      syncAll: () => Promise<{ results: Record<string, { synced?: number; error?: string }>; error?: string }>
+      syncGoogleCalendar: () => Promise<{ synced: number; error?: string }>
+      syncGmail: () => Promise<{ synced: number; error?: string }>
+      syncAppleCalendar: () => Promise<{ synced: number; error?: string }>
 
       // Native features
       runAppleScript: (script: string) => Promise<string>
       findDocuments: (query: string) => Promise<string[]>
       setupWorkspace: (config: any) => Promise<void>
+
+      // Edge functions
+      invokeFunction: (functionName: string, body: Record<string, unknown>) => Promise<{ data?: any; error?: string }>
+
+      // Events
+      getUpcomingEvents: () => Promise<{ data: any[]; error?: string }>
+      updateEvent: (eventId: string, updates: Record<string, unknown>) => Promise<{ success?: boolean; error?: string }>
     }
   }
 }

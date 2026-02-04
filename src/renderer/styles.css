@@ -2,22 +2,154 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom scrollbar for macOS-style appearance */
+/* ============================================
+   CLAIRVOYANT - Electron App Styles
+   Aesthetic: Mystical Oracle / Dark Luxury
+   Matching Landing Page Design System
+   ============================================ */
+
+/* Local Font Definitions */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url('/fonts/inter-300.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/inter-400.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/inter-500.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/inter-600.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/playfair-400.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/playfair-500.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/playfair-600.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/playfair-700.ttf') format('truetype');
+}
+
+/* CSS Variables - The Color System */
+:root {
+  /* Core Colors - Matching Landing Page */
+  --void: #050505;
+  --void-light: #0a0a0a;
+  --void-lighter: #111111;
+  --void-card: #0d0d0d;
+
+  /* Cream Spectrum */
+  --cream: #f8f4eb;
+  --cream-muted: #e8e4db;
+  --cream-dark: #c4c0b7;
+
+  /* Amber/Gold - Primary Accent (Mystical Energy) */
+  --amber: #f59e0b;
+  --amber-light: #fbbf24;
+  --amber-glow: rgba(245, 158, 11, 0.15);
+  --amber-intense: rgba(245, 158, 11, 0.4);
+
+  /* Secondary Accents */
+  --violet: #7c3aed;
+  --violet-glow: rgba(124, 58, 237, 0.2);
+  --emerald: #059669;
+  --rose: #e11d48;
+
+  /* Functional */
+  --border: rgba(248, 244, 235, 0.08);
+  --border-hover: rgba(248, 244, 235, 0.15);
+
+  /* Animation */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 300ms;
+  --duration-slow: 500ms;
+}
+
+/* Base Styles */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 400;
+  line-height: 1.6;
+  background: var(--void);
+  color: var(--cream);
+  overflow-x: hidden;
+}
+
+/* Selection */
+::selection {
+  background: var(--amber);
+  color: var(--void);
+}
+
+/* Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: var(--void);
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
+  background: var(--void-lighter);
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(0, 0, 0, 0.3);
+  background: rgba(248, 244, 235, 0.15);
 }
 
 /* Drag region for frameless window */
@@ -29,14 +161,355 @@
   -webkit-app-region: no-drag;
 }
 
-/* Smooth transitions */
-* {
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+/* Typography Classes */
+.font-display {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
 }
 
-/* Focus styles */
-button:focus,
-input:focus {
+.font-body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Gradient Text */
+.gradient-text {
+  background: linear-gradient(135deg, var(--cream) 0%, var(--amber-light) 50%, var(--cream) 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-amber {
+  background: linear-gradient(135deg, var(--amber) 0%, var(--amber-light) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Background Effects */
+.bg-gradient-oracle {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(245, 158, 11, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 40% at 80% 50%, rgba(124, 58, 237, 0.08) 0%, transparent 40%),
+    radial-gradient(ellipse 60% 40% at 20% 80%, rgba(245, 158, 11, 0.06) 0%, transparent 40%),
+    var(--void);
+}
+
+.void-pattern {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(245, 158, 11, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(124, 58, 237, 0.05) 0%, transparent 40%);
+}
+
+/* Glass effect */
+.glass {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.03) 0%,
+    rgba(255, 255, 255, 0.01) 100%
+  );
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+}
+
+/* Glow Effects */
+.glow-amber {
+  box-shadow:
+    0 0 20px var(--amber-glow),
+    0 0 40px var(--amber-glow),
+    0 0 60px rgba(245, 158, 11, 0.05);
+}
+
+.glow-amber-intense {
+  box-shadow:
+    0 0 30px var(--amber-intense),
+    0 0 60px var(--amber-glow),
+    0 0 90px rgba(245, 158, 11, 0.1);
+}
+
+/* Card Styles */
+.card {
+  background: var(--void-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  transition: all var(--duration-normal) var(--ease-out-expo);
+}
+
+.card:hover {
+  border-color: var(--border-hover);
+}
+
+.card-glass {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.03) 0%,
+    rgba(255, 255, 255, 0.01) 100%
+  );
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.card-glass:hover {
+  border-color: var(--border-hover);
+}
+
+/* Button Styles */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 13px;
+  border-radius: 100px;
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-out-expo);
+}
+
+.btn-primary {
+  padding: 10px 20px;
+  background: var(--cream);
+  color: var(--void);
+  border: none;
+}
+
+.btn-primary:hover {
+  background: var(--amber-light);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(245, 158, 11, 0.2);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-secondary {
+  padding: 10px 20px;
+  background: transparent;
+  color: var(--cream);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover {
+  border-color: var(--cream-dark);
+  background: rgba(248, 244, 235, 0.05);
+}
+
+.btn-ghost {
+  padding: 8px 12px;
+  background: transparent;
+  color: var(--cream-muted);
+  border: none;
+}
+
+.btn-ghost:hover {
+  color: var(--cream);
+  background: rgba(248, 244, 235, 0.05);
+}
+
+/* Input Styles */
+.input {
+  background: var(--void-light);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 14px;
+  color: var(--cream);
+  transition: all var(--duration-fast) ease;
+  width: 100%;
+}
+
+.input::placeholder {
+  color: var(--cream-dark);
+}
+
+.input:focus {
   outline: none;
-  ring: 2px solid rgb(59, 130, 246);
+  border-color: var(--amber);
+  box-shadow: 0 0 0 3px var(--amber-glow);
+}
+
+/* Badge/Label Styles */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+
+.badge-amber {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.2);
+  color: var(--amber);
+}
+
+.badge-violet {
+  background: rgba(124, 58, 237, 0.1);
+  border-color: rgba(124, 58, 237, 0.2);
+  color: var(--violet);
+}
+
+.badge-emerald {
+  background: rgba(5, 150, 105, 0.1);
+  border-color: rgba(5, 150, 105, 0.2);
+  color: var(--emerald);
+}
+
+.badge-rose {
+  background: rgba(225, 29, 72, 0.1);
+  border-color: rgba(225, 29, 72, 0.2);
+  color: var(--rose);
+}
+
+.badge-cream {
+  background: rgba(248, 244, 235, 0.08);
+  border-color: rgba(248, 244, 235, 0.15);
+  color: var(--cream-muted);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes orbFloat {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-10px) scale(1.02);
+  }
+}
+
+@keyframes orbPulse {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.8s var(--ease-out-expo) forwards;
+  opacity: 0;
+}
+
+.animate-float {
+  animation: orbFloat 6s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: orbPulse 4s ease-in-out infinite;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Staggered Animation Delays */
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+.stagger-5 { animation-delay: 0.5s; }
+
+/* Loading Spinner */
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border);
+  border-top-color: var(--amber);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* Shimmer Effect */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(248, 244, 235, 0.1) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+/* Divider */
+.divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border), transparent);
+}
+
+/* Orb Effect (for logo) */
+.orb {
+  position: relative;
+  animation: orbFloat 6s ease-in-out infinite;
+}
+
+.orb::before {
+  content: '';
+  position: absolute;
+  inset: -20%;
+  background: radial-gradient(circle, var(--amber-glow) 0%, transparent 70%);
+  animation: orbPulse 4s ease-in-out infinite;
+  border-radius: 50%;
+}
+
+/* Link Styles */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.link-amber {
+  color: var(--amber);
+  transition: opacity var(--duration-fast) ease;
+}
+
+.link-amber:hover {
+  opacity: 0.8;
+}
+
+/* Focus States */
+*:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
 }

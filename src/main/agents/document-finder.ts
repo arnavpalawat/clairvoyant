@@ -121,3 +121,47 @@ export async function findRecentDocuments(limit = 10): Promise<DocumentResult[]>
 export async function openDocument(filePath: string): Promise<void> {
   await execAsync(`open "${filePath}"`)
 }
+
+/**
+ * Simple file search by name using Spotlight
+ */
+export async function searchLocalFiles(query: string, limit = 10): Promise<{ name: string; path: string; source: 'local' }[]> {
+  try {
+    const { stdout } = await execAsync(
+      `mdfind "kMDItemDisplayName == '*${query}*'wc" | head -${limit}`,
+      { maxBuffer: 1024 * 1024 }
+    )
+    return stdout.trim().split('\n').filter(Boolean).map(filePath => ({
+      name: path.basename(filePath),
+      path: filePath,
+      source: 'local' as const,
+    }))
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Find documents relevant to a meeting based on title and attendees
+ */
+export async function findRelevantDocumentsForMeeting(
+  title: string,
+  attendees: string[]
+): Promise<{ name: string; path: string; source: 'local' }[]> {
+  const terms = [title, ...attendees.map(a => a.split('@')[0])].slice(0, 5)
+  const allDocs: { name: string; path: string; source: 'local' }[] = []
+
+  for (const term of terms) {
+    if (term.length < 3) continue
+    const docs = await searchLocalFiles(term, 5)
+    allDocs.push(...docs)
+  }
+
+  // Deduplicate
+  const seen = new Set<string>()
+  return allDocs.filter(d => {
+    if (seen.has(d.path)) return false
+    seen.add(d.path)
+    return true
+  }).slice(0, 10)
+}

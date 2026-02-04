@@ -8,6 +8,8 @@ export default defineConfig({
   base: './',
   // Load .env from project root (not from src/renderer)
   envDir: path.resolve(__dirname),
+  // Public directory is at project root
+  publicDir: path.resolve(__dirname, 'public'),
   build: {
     outDir: '../../dist/renderer',
     emptyOutDir: true,

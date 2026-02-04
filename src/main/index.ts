@@ -8,6 +8,8 @@ config({ path: path.join(__dirname, '../../.env') })
 import { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, shell } from 'electron'
 import { startMeetingWatcher } from './agents/workspace-manager'
 import { handleAuthCallback, getSession, signOut, supabase } from './supabase'
+import { syncGoogleCalendar, syncGmail } from './agents/google-sync'
+import { syncAppleCalendar } from './agents/apple-calendar'
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
@@ -188,4 +190,266 @@ ipcMain.handle('auth:sign-in-google', async () => {
 ipcMain.handle('auth:sign-out', async () => {
   await signOut()
   return { success: true }
+})
+
+// Profile IPC handlers (route through main process which has the session)
+ipcMain.handle('profile:get', async (_, userId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single()
+
+    if (error) {
+      console.error('[Profile] Get error:', error.message)
+      return { error: error.message }
+    }
+    return { data }
+  } catch (err) {
+    console.error('[Profile] Get failed:', err)
+    return { error: 'Failed to get profile' }
+  }
+})
+
+ipcMain.handle('profile:update', async (_, userId: string, updates: Record<string, any>) => {
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .update(updates)
+      .eq('id', userId)
+
+    if (error) {
+      console.error('[Profile] Update error:', error.message)
+      return { error: error.message }
+    }
+    return { success: true }
+  } catch (err) {
+    console.error('[Profile] Update failed:', err)
+    return { error: 'Failed to update profile' }
+  }
+})
+
+// Feed items IPC handlers
+ipcMain.handle('feed:get', async () => {
+  try {
+    const session = await getSession()
+    if (!session?.user) {
+      return { error: 'Not authenticated', data: [] }
+    }
+
+    const { data, error } = await supabase
+      .from('feed_items')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .eq('dismissed', false)
+      .order('priority', { ascending: false })
+      .limit(20)
+
+    if (error) {
+      console.error('[Feed] Get error:', error.message)
+      return { error: error.message, data: [] }
+    }
+    return { data: data || [] }
+  } catch (err) {
+    console.error('[Feed] Get failed:', err)
+    return { error: 'Failed to get feed', data: [] }
+  }
+})
+
+ipcMain.handle('feed:dismiss', async (_, itemId: string) => {
+  try {
+    const session = await getSession()
+    if (!session?.user) {
+      return { error: 'Not authenticated' }
+    }
+
+    const { error } = await supabase
+      .from('feed_items')
+      .update({ dismissed: true })
+      .eq('id', itemId)
+      .eq('user_id', session.user.id)
+
+    if (error) {
+      console.error('[Feed] Dismiss error:', error.message)
+      return { error: error.message }
+    }
+    return { success: true }
+  } catch (err) {
+    console.error('[Feed] Dismiss failed:', err)
+    return { error: 'Failed to dismiss item' }
+  }
+})
+
+// Sync IPC handlers
+ipcMain.handle('sync:google-calendar', async () => {
+  try {
+    const session = await getSession()
+    if (!session?.user) {
+      return { error: 'Not authenticated', synced: 0 }
+    }
+
+    console.log('[Sync] Starting Google Calendar sync...')
+    const synced = await syncGoogleCalendar(session.user.id)
+    console.log(`[Sync] Google Calendar sync complete: ${synced} events`)
+    return { synced }
+  } catch (err) {
+    console.error('[Sync] Google Calendar failed:', err)
+    return { error: String(err), synced: 0 }
+  }
+})
+
+ipcMain.handle('sync:gmail', async () => {
+  try {
+    const session = await getSession()
+    if (!session?.user) {
+      return { error: 'Not authenticated', synced: 0 }
+    }
+
+    console.log('[Sync] Starting Gmail sync...')
+    const synced = await syncGmail(session.user.id)
+    console.log(`[Sync] Gmail sync complete: ${synced} emails`)
+    return { synced }
+  } catch (err) {
+    console.error('[Sync] Gmail failed:', err)
+    return { error: String(err), synced: 0 }
+  }
+})
+
+ipcMain.handle('sync:apple-calendar', async () => {
+  try {
+    const session = await getSession()
+    if (!session?.user) {
+      return { error: 'Not authenticated', synced: 0 }
+    }
+
+    console.log('[Sync] Starting Apple Calendar sync...')
+    const synced = await syncAppleCalendar(session.user.id)
+    console.log(`[Sync] Apple Calendar sync complete: ${synced} events`)
+    return { synced }
+  } catch (err) {
+    console.error('[Sync] Apple Calendar failed:', err)
+    return { error: String(err), synced: 0 }
+  }
+})
+
+ipcMain.handle('sync:all', async () => {
+  try {
+    const session = await getSession()
+    if (!session?.user) {
+      return { error: 'Not authenticated', results: {} }
+    }
+
+    console.log('[Sync] Starting full sync...')
+    const results: Record<string, { synced?: number; error?: string }> = {}
+
+    // Google Calendar
+    try {
+      results.googleCalendar = { synced: await syncGoogleCalendar(session.user.id) }
+    } catch (err) {
+      results.googleCalendar = { error: String(err), synced: 0 }
+    }
+
+    // Gmail
+    try {
+      results.gmail = { synced: await syncGmail(session.user.id) }
+    } catch (err) {
+      results.gmail = { error: String(err), synced: 0 }
+    }
+
+    // Apple Calendar
+    try {
+      results.appleCalendar = { synced: await syncAppleCalendar(session.user.id) }
+    } catch (err) {
+      results.appleCalendar = { error: String(err), synced: 0 }
+    }
+
+    console.log('[Sync] Full sync complete:', results)
+    return { results }
+  } catch (err) {
+    console.error('[Sync] Full sync failed:', err)
+    return { error: String(err), results: {} }
+  }
+})
+
+// Edge function invocation handler
+ipcMain.handle('functions:invoke', async (_, functionName: string, body: Record<string, unknown>) => {
+  try {
+    const session = await getSession()
+    if (!session) {
+      return { error: 'Not authenticated' }
+    }
+
+    console.log(`[Functions] Invoking ${functionName}...`)
+    const { data, error } = await supabase.functions.invoke(functionName, { body })
+
+    if (error) {
+      console.error(`[Functions] ${functionName} error:`, error.message)
+      return { error: error.message }
+    }
+
+    console.log(`[Functions] ${functionName} complete`)
+    return { data }
+  } catch (err) {
+    console.error(`[Functions] ${functionName} failed:`, err)
+    return { error: String(err) }
+  }
+})
+
+// Get upcoming events for feed generation
+ipcMain.handle('events:upcoming', async () => {
+  try {
+    const session = await getSession()
+    if (!session?.user) {
+      return { error: 'Not authenticated', data: [] }
+    }
+
+    const now = new Date()
+    const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000)
+
+    const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .gte('start_time', now.toISOString())
+      .lte('start_time', tomorrow.toISOString())
+      .order('start_time', { ascending: true })
+      .limit(10)
+
+    if (error) {
+      console.error('[Events] Upcoming error:', error.message)
+      return { error: error.message, data: [] }
+    }
+
+    return { data: data || [] }
+  } catch (err) {
+    console.error('[Events] Upcoming failed:', err)
+    return { error: 'Failed to get upcoming events', data: [] }
+  }
+})
+
+// Update event with brief
+ipcMain.handle('events:update', async (_, eventId: string, updates: Record<string, unknown>) => {
+  try {
+    const session = await getSession()
+    if (!session?.user) {
+      return { error: 'Not authenticated' }
+    }
+
+    const { error } = await supabase
+      .from('events')
+      .update(updates)
+      .eq('id', eventId)
+      .eq('user_id', session.user.id)
+
+    if (error) {
+      console.error('[Events] Update error:', error.message)
+      return { error: error.message }
+    }
+
+    return { success: true }
+  } catch (err) {
+    console.error('[Events] Update failed:', err)
+    return { error: 'Failed to update event' }
+  }
 })
