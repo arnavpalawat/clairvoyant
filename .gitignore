@@ -40,3 +40,12 @@ coverage/
 .supabase/
 supabase/.branches/
 supabase/.temp/
+
+# Electron Builder
+release/
+
+# pnpm
+pnpm-lock.yaml
+
+# Claude Code
+.claude/
