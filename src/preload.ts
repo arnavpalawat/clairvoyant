@@ -45,6 +45,30 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getUpcomingEvents: () => ipcRenderer.invoke('events:upcoming'),
   updateEvent: (eventId: string, updates: Record<string, unknown>) =>
     ipcRenderer.invoke('events:update', eventId, updates),
+
+  // Vision
+  checkVisionPermission: () => ipcRenderer.invoke('vision:check-permission'),
+  requestVisionPermission: () => ipcRenderer.invoke('vision:request-permission'),
+  startVision: () => ipcRenderer.invoke('vision:start'),
+  stopVision: () => ipcRenderer.invoke('vision:stop'),
+  getVisionStatus: () => ipcRenderer.invoke('vision:status'),
+  captureNow: () => ipcRenderer.invoke('vision:capture-now'),
+  updateVisionSettings: (settings: Record<string, unknown>) =>
+    ipcRenderer.invoke('vision:update-settings', settings),
+
+  // Overlay
+  showOverlay: () => ipcRenderer.invoke('overlay:show'),
+  hideOverlay: () => ipcRenderer.invoke('overlay:hide'),
+  toggleOverlay: () => ipcRenderer.invoke('overlay:toggle'),
+  minimizeOverlay: () => ipcRenderer.invoke('overlay:minimize'),
+  expandOverlay: () => ipcRenderer.invoke('overlay:expand'),
+  setOverlayOpacity: (opacity: number) => ipcRenderer.invoke('overlay:set-opacity', opacity),
+
+  // Recommendations
+  getRecommendations: () => ipcRenderer.invoke('recommendations:get'),
+  dismissRecommendation: (id: string) => ipcRenderer.invoke('recommendations:dismiss', id),
+  takeRecommendationAction: (id: string, actionId: string) =>
+    ipcRenderer.invoke('recommendations:action', id, actionId),
 })
 
 // Type declaration for renderer
@@ -88,6 +112,28 @@ declare global {
       // Events
       getUpcomingEvents: () => Promise<{ data: any[]; error?: string }>
       updateEvent: (eventId: string, updates: Record<string, unknown>) => Promise<{ success?: boolean; error?: string }>
+
+      // Vision
+      checkVisionPermission: () => Promise<{ granted: boolean }>
+      requestVisionPermission: () => Promise<{ success: boolean }>
+      startVision: () => Promise<{ success: boolean }>
+      stopVision: () => Promise<{ success: boolean }>
+      getVisionStatus: () => Promise<{ running: boolean; paused: boolean; lastCapture: Date | null }>
+      captureNow: () => Promise<{ analysis: any }>
+      updateVisionSettings: (settings: Record<string, unknown>) => Promise<{ success?: boolean; error?: string }>
+
+      // Overlay
+      showOverlay: () => Promise<{ success: boolean }>
+      hideOverlay: () => Promise<{ success: boolean }>
+      toggleOverlay: () => Promise<{ success: boolean }>
+      minimizeOverlay: () => Promise<{ success: boolean }>
+      expandOverlay: () => Promise<{ success: boolean }>
+      setOverlayOpacity: (opacity: number) => Promise<{ success: boolean }>
+
+      // Recommendations
+      getRecommendations: () => Promise<{ recommendations: any[] }>
+      dismissRecommendation: (id: string) => Promise<{ success: boolean }>
+      takeRecommendationAction: (id: string, actionId: string) => Promise<{ success: boolean }>
     }
   }
 }

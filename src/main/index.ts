@@ -1,15 +1,25 @@
 // Load environment variables first, before any other imports
 import { config } from 'dotenv'
 import path from 'path'
+import { app } from 'electron'
 
-// Load .env from project root (in CommonJS, __dirname is available globally)
-config({ path: path.join(__dirname, '../../.env') })
+// Load .env - handle both dev and packaged paths
+const isDev = !app.isPackaged
+const envPath = isDev
+  ? path.join(__dirname, '../../.env')
+  : path.join(process.resourcesPath, 'app.asar', '.env')
 
-import { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, shell } from 'electron'
+config({ path: envPath })
+console.log('[Clairvoyant] Loading env from:', envPath)
+
+import { BrowserWindow, Tray, Menu, nativeImage, ipcMain, shell } from 'electron'
 import { startMeetingWatcher } from './agents/workspace-manager'
 import { handleAuthCallback, getSession, signOut, supabase } from './supabase'
 import { syncGoogleCalendar, syncGmail } from './agents/google-sync'
 import { syncAppleCalendar } from './agents/apple-calendar'
+import { overlayManager } from './overlay-window'
+import { visionEngine } from './agents/desktop-vision'
+import { recommendationEngine } from './agents/recommendation-engine'
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
@@ -29,7 +39,7 @@ function createWindow() {
   })
 
   // In development, load from Vite dev server
-  if (process.env.NODE_ENV === 'development') {
+  if (!app.isPackaged) {
     mainWindow.loadURL('http://localhost:5173')
   } else {
     const indexPath = path.join(__dirname, '../renderer/index.html')
@@ -54,7 +64,9 @@ function createWindow() {
 }
 
 function createTray() {
-  const iconPath = path.join(__dirname, '../../assets/tray-icon.png')
+  const iconPath = app.isPackaged
+    ? path.join(__dirname, '../renderer/logo.png')
+    : path.join(__dirname, '../../public/logo.png')
   const icon = nativeImage.createFromPath(iconPath)
 
   tray = new Tray(icon.resize({ width: 18, height: 18 }))
@@ -69,17 +81,6 @@ function createTray() {
       mainWindow?.show()
     }
   })
-
-  const contextMenu = Menu.buildFromTemplate([
-    { label: 'Open Clairvoyant', click: () => mainWindow?.show() },
-    { label: 'Sync Now', click: () => ipcMain.emit('sync-all') },
-    { type: 'separator' },
-    { label: 'Preferences...', accelerator: 'Cmd+,' },
-    { type: 'separator' },
-    { label: 'Quit', accelerator: 'Cmd+Q', click: () => app.quit() },
-  ])
-
-  tray.setContextMenu(contextMenu)
 }
 
 app.whenReady().then(() => {
@@ -104,13 +105,33 @@ app.whenReady().then(() => {
 
   // Show window initially so user can see it
   setTimeout(() => {
-    if (tray && mainWindow) {
-      const bounds = tray.getBounds()
-      mainWindow.setPosition(bounds.x - 180, bounds.y + bounds.height + 5)
+    if (mainWindow) {
+      // Always center initially for visibility
+      mainWindow.center()
       mainWindow.show()
-      console.log('[Clairvoyant] Window shown')
+      mainWindow.focus()
+      console.log('[Clairvoyant] Window shown (centered)')
     }
   }, 1000)
+
+  // Show overlay window after a delay (for demo purposes)
+  setTimeout(() => {
+    console.log('[Clairvoyant] Creating overlay window...')
+    overlayManager.show()
+  }, 2000)
+
+  // Auto-start vision if user is authenticated and has enabled it
+  setTimeout(async () => {
+    try {
+      const session = await getSession()
+      if (session?.user) {
+        console.log('[Clairvoyant] User authenticated, checking vision settings...')
+        await visionEngine.start()
+      }
+    } catch (err) {
+      console.log('[Clairvoyant] Vision auto-start skipped:', err)
+    }
+  }, 3000)
 
   app.dock?.hide() // Menubar app only
 })
@@ -452,4 +473,133 @@ ipcMain.handle('events:update', async (_, eventId: string, updates: Record<strin
     console.error('[Events] Update failed:', err)
     return { error: 'Failed to update event' }
   }
+})
+
+// ===== Vision IPC Handlers =====
+
+ipcMain.handle('vision:check-permission', async () => {
+  const granted = await visionEngine.checkScreenPermission()
+  return { granted }
+})
+
+ipcMain.handle('vision:request-permission', async () => {
+  await visionEngine.requestScreenPermission()
+  return { success: true }
+})
+
+ipcMain.handle('vision:start', async () => {
+  await visionEngine.start()
+  return { success: true }
+})
+
+ipcMain.handle('vision:stop', () => {
+  visionEngine.stop()
+  return { success: true }
+})
+
+ipcMain.handle('vision:status', () => {
+  return visionEngine.getStatus()
+})
+
+ipcMain.handle('vision:capture-now', async () => {
+  const analysis = await visionEngine.captureNow()
+  return { analysis }
+})
+
+ipcMain.handle('vision:pause', () => {
+  visionEngine.pause()
+  return { success: true }
+})
+
+ipcMain.handle('vision:resume', () => {
+  visionEngine.resume()
+  return { success: true }
+})
+
+ipcMain.handle('vision:update-settings', async (_, settings: Record<string, unknown>) => {
+  try {
+    const session = await getSession()
+    if (!session?.user) {
+      return { error: 'Not authenticated' }
+    }
+
+    // Get current preferences
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('preferences')
+      .eq('id', session.user.id)
+      .single()
+
+    const currentPrefs = profile?.preferences || {}
+    const updatedPrefs = {
+      ...currentPrefs,
+      vision: { ...currentPrefs.vision, ...settings },
+    }
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ preferences: updatedPrefs })
+      .eq('id', session.user.id)
+
+    if (error) {
+      console.error('[Vision] Update settings error:', error.message)
+      return { error: error.message }
+    }
+
+    // Reload settings in vision engine
+    await visionEngine.loadSettings()
+
+    return { success: true }
+  } catch (err) {
+    console.error('[Vision] Update settings failed:', err)
+    return { error: 'Failed to update vision settings' }
+  }
+})
+
+// ===== Overlay IPC Handlers =====
+
+ipcMain.handle('overlay:show', () => {
+  overlayManager.show()
+  return { success: true }
+})
+
+ipcMain.handle('overlay:hide', () => {
+  overlayManager.hide()
+  return { success: true }
+})
+
+ipcMain.handle('overlay:toggle', () => {
+  overlayManager.toggle()
+  return { success: true }
+})
+
+ipcMain.handle('overlay:minimize', () => {
+  overlayManager.minimize()
+  return { success: true }
+})
+
+ipcMain.handle('overlay:expand', () => {
+  overlayManager.expand()
+  return { success: true }
+})
+
+ipcMain.handle('overlay:set-opacity', (_, opacity: number) => {
+  overlayManager.setOpacity(opacity)
+  return { success: true }
+})
+
+// ===== Recommendation IPC Handlers =====
+
+ipcMain.handle('recommendations:get', () => {
+  return { recommendations: recommendationEngine.getCurrent() }
+})
+
+ipcMain.handle('recommendations:dismiss', (_, id: string) => {
+  const dismissed = recommendationEngine.dismiss(id)
+  return { success: dismissed }
+})
+
+ipcMain.handle('recommendations:action', async (_, id: string, actionId: string) => {
+  await recommendationEngine.takeAction(id, actionId)
+  return { success: true }
 })

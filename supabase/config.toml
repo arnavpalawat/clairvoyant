@@ -40,3 +40,6 @@ secret = "env(GOOGLE_CLIENT_SECRET)"
 
 [analytics]
 enabled = false
+
+[functions.analyze-desktop]
+verify_jwt = false

@@ -57,7 +57,8 @@
     },
     "files": [
       "dist/**/*",
-      "assets/**/*"
+      "assets/**/*",
+      ".env"
     ],
     "directories": {
       "output": "release"

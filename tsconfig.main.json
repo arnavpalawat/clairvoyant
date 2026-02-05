@@ -14,6 +14,6 @@
     "declaration": false,
     "types": ["node"]
   },
-  "include": ["src/main/**/*", "src/preload.ts"],
+  "include": ["src/main/**/*", "src/preload.ts", "src/preload-overlay.ts"],
   "exclude": ["node_modules", "src/renderer", "src/shared"]
 }
